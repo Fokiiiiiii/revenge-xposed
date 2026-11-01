@@ -16,7 +16,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1904
-        versionName = "1.9.4"
+        versionName = "1.9.4-cachefix.1"
     }
 
     sourceSets {

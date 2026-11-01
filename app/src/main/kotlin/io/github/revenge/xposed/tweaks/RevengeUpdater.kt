@@ -26,6 +26,11 @@ data class LoaderConfig(
     val customLoadUrl: CustomLoadUrl = CustomLoadUrl(),
 )
 
+internal fun File.isUsableBundle(): Boolean = isFile && length() > 0
+
+internal fun shouldReportUpdateFailure(userInitiated: Boolean, hasCache: Boolean): Boolean =
+    userInitiated || !hasCache
+
 /**
  * Updater for the JS bundle.
  *
@@ -88,13 +93,14 @@ object RevengeUpdater {
 
             val result = httpClient.getWithETag(
                 url = url,
-                etag = if (etag.exists() && bundle.exists()) etag.readText() else null,
+                etag = if (etag.exists() && bundle.isUsableBundle()) etag.readText() else null,
                 timeoutMillis = if (userInitiated) null
-                else if (bundle.exists()) TIMEOUT_CACHED.inWholeMilliseconds else TIMEOUT.inWholeMilliseconds,
+                else if (bundle.isUsableBundle()) TIMEOUT_CACHED.inWholeMilliseconds else TIMEOUT.inWholeMilliseconds,
             )
 
             when (result) {
                 is ETagFetchResult.Fetched -> {
+                    require(result.bytes.isNotEmpty()) { "Downloaded bundle is empty" }
                     AtomicFile(bundle).writeBytes(result.bytes)
                     result.etag?.let(etag::writeText) ?: etag.delete()
 
@@ -109,9 +115,15 @@ object RevengeUpdater {
 
                 ETagFetchResult.NotModified -> log.i("Server responded with 304, no changes")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             log.e("Failed to download script", e)
-            showErrorDialog(e)
+            if (shouldReportUpdateFailure(userInitiated, bundle.isUsableBundle())) {
+                showErrorDialog(e)
+            } else {
+                log.w("Automatic update failed; keeping the cached bundle")
+            }
         } finally {
             _downloadReady.complete(Unit)
         }

@@ -2,7 +2,6 @@ package io.github.revenge.xposed.tweaks
 
 import io.github.revenge.xposed.RevengeConstants
 import io.github.revenge.xposed.ensureDir
-import io.github.revenge.xposed.ensureFile
 import io.github.revenge.xposed.tweak
 import io.github.revenge.xposed.tweaks.base.InjectorScope
 import io.github.revenge.xposed.tweaks.base.registerScriptInjector
@@ -23,7 +22,7 @@ val revengeScriptLoader by tweak {
     val filesDir = File(dataDir, RevengeConstants.FILES_DIR).apply { ensureDir() }
     val cacheDir = File(dataDir, RevengeConstants.CACHE_DIR).apply { ensureDir() }
     val preloadsDir = File(filesDir, RevengeConstants.PRELOADS_DIR).apply { ensureDir() }
-    val mainScript = File(cacheDir, RevengeConstants.MAIN_SCRIPT_FILE).apply { ensureFile() }
+    val mainScript = File(cacheDir, RevengeConstants.MAIN_SCRIPT_FILE)
 
     registerScriptInjector { scope: InjectorScope ->
         runRevengeScripts(scope, preloadsDir, mainScript)
@@ -48,7 +47,7 @@ private fun runRevengeScripts(scope: InjectorScope, preloadsDir: File, mainScrip
             scope.runFile(f.absolutePath)
         }
 
-        if (mainScript.exists()) {
+        if (mainScript.isUsableBundle()) {
             log.i("Loading downloaded bundle: ${mainScript.absolutePath}")
             scope.runFile(mainScript.absolutePath)
         } else {
